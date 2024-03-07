@@ -62,7 +62,23 @@ func (p Provider) CreateInstance(_ context.Context, bootstrapParams params.Boots
 					ImagePullPolicy: corev1.PullAlways,
 				},
 			},
+			NodeSelector: map[string]string{
+				"beta.kubernetes.io/os": string(bootstrapParams.OSType),
+				"kubernetes.io/os":      string(bootstrapParams.OSType),
+			},
+			Tolerations: []corev1.Toleration{},
 		},
+	}
+
+	if bootstrapParams.OSType == params.Windows {
+		pod.Spec.Tolerations = []corev1.Toleration{
+			{
+				Effect:   corev1.TaintEffectNoSchedule,
+				Key:      "node.kubernetes.io/os",
+				Operator: corev1.TolerationOpEqual,
+				Value:    "windows",
+			},
+		}
 	}
 
 	err = p.ensureNamespace(config.Config.RunnerNamespace)
