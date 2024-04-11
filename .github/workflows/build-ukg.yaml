@@ -1,0 +1,46 @@
+name: bst-garm-provider-k8s
+'on':
+  push: 
+    branches:
+      - main
+      - develop
+  workflow_dispatch: {}
+concurrency:
+  group: '${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: true
+env:
+  JF_URL: ${{ vars.ARTIFACTORY_URL }}
+  JF_USER: ${{ vars.ARTIFACTORY_USERNAME }}
+  JF_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+jobs:
+  build:
+    runs-on: [garm, us-east4, container, linux, go, medium]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: build
+        run: |
+          # Update sources
+          sudo apt-get update
+
+          # Install dependencies
+          sudo apt-get install -y make
+
+          # Build garm provider
+          make build
+
+      - uses: jfrog/setup-jfrog-cli@v3
+
+      - name: Upload to Artifactory
+        run: |
+          REPO="da-build-systems-prod"
+          REPO_DIR="garm/providers"
+          FILE_NAME="garm-provider-k8s"
+          
+          jf c add ukgartifactory --url=$JF_URL --user=$JF_USER --password=$JF_PASSWORD --interactive=false
+
+          ls -la
+          
+          jf rt upload bin/$FILE_NAME $REPO/$REPO_DIR/$FILE_NAME-${{ github.ref_name }}
